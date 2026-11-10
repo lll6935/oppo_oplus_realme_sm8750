@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5          # Node 24 runtime
         with:
           fetch-depth: 1
 
@@ -65,7 +65,8 @@ jobs:
             [ "${{ inputs.enable_kpm }}" = "true" ] && echo "CONFIG_KPM=y"
             [ "${{ inputs.enable_kpm }}" = "true" ] && echo "CONFIG_KALLSYMS_ALL=y"
 
-            [ "${{ inputs.enable_droidspaces }}" = "true" ] && cat <<'EOF'
+            if [ "${{ inputs.enable_droidspaces }}" = "true" ]; then
+              cat <<'EOF'
           CONFIG_NAMESPACES=y
           CONFIG_PID_NS=y
           CONFIG_UTS_NS=y
@@ -103,12 +104,15 @@ jobs:
           CONFIG_IP_SET_HASH_IP=y
           CONFIG_IP_SET_MAX=256
           EOF
+            fi
 
-            [ "${{ inputs.enable_bbr }}" = "true" ] && cat <<'EOF'
+            if [ "${{ inputs.enable_bbr }}" = "true" ]; then
+              cat <<'EOF'
           CONFIG_TCP_CONG_BBR=y
           CONFIG_NET_SCH_FQ=y
           CONFIG_DEFAULT_TCP_CONG="bbr"
           EOF
+            fi
 
             [ "${{ inputs.enable_adios }}" = "true" ] && echo "CONFIG_IOSCHED_ADIOS=y"
             [ "${{ inputs.enable_nomount }}" = "true" ] && echo "CONFIG_NOMOUNT=y"
@@ -121,7 +125,6 @@ jobs:
           PATCHES="$GITHUB_WORKSPACE/patches"
           mkdir -p "$PATCHES"
 
-          # 定位内核源码（cctv18 在 OKI 模式下通常检出到 kernel/ 或 common/）
           KERNEL_SRC=""
           for d in kernel common msm-kernel; do
             [ -f "$d/Makefile" ] && KERNEL_SRC="$d" && break
@@ -138,7 +141,6 @@ jobs:
             fi
           }
 
-          # SUSFS 2.3.0
           if [ "${{ inputs.enable_susfs }}" = "true" ]; then
             curl -L -o "$PATCHES/susfs.zip" \
               "https://github.com/zzh20188/GKI_KernelSU_SUSFS/releases/download/v2.3.0-r5/SUSFS-Patches-6.6.zip"
@@ -146,9 +148,8 @@ jobs:
             find "$PATCHES/susfs" -name "*.patch" | sort | while read -r p; do safe_apply "$p"; done
           fi
 
-          # Droidspaces
           if [ "${{ inputs.enable_droidspaces }}" = "true" ]; then
             for url in \
               "https://github.com/Goldzxcbug/Droidspaces_Kernel_patch/raw/main/6.6/ntsync_base.patch" \
               "https://github.com/Goldzxcbug/Droidspaces_Kernel_patch/raw/main/6.6/android15-6.6.patch" \
-              "https://github.com/Goldzxcbug/Droidspaces_Kernel_patch/raw/main/6.6/04.s
+              "https://github.com/Goldzxcbug/Droidspaces_Kernel_patch/raw/main/6.6/04.sysvipc_task
